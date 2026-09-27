@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Comparateur de lumière</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F4; --panel:#FFFFFF; --ink:#1F2A36; --muted:#5B7083; --line:#D5DCE3;
+  --sun:#F2B233; --shade:#2F4A63;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141C25; --panel:#1C2733; --ink:#E8EDF2; --muted:#97A8B8; --line:#2D3B4A;
+    --sun:#F5BD45; --shade:#9DB6CC; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141C25; --panel:#1C2733; --ink:#E8EDF2; --muted:#97A8B8; --line:#2D3B4A;
+  --sun:#F5BD45; --shade:#9DB6CC; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:560px;margin:0 auto;padding:20px 16px 40px}
+h1{font:700 1.75rem/1.1 "Bricolage Grotesque",Figtree,system-ui,sans-serif;margin:4px 0 4px;letter-spacing:-.01em}
+.lede{color:var(--muted);margin:0 0 18px;font-size:.95rem}
+
+.viewer{position:relative;border-radius:22px;overflow:hidden;background:#0d141b;aspect-ratio:4/3}
+video,#shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.viewer .off{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#c9d4de;padding:24px;background:#0d141b}
+.viewer .off p{margin:0 0 14px;max-width:34ch}
+.viewer .off .linkish{color:#c9d4de;margin-top:10px}
+.reticle{position:absolute;inset:0;pointer-events:none;display:grid;place-items:center}
+.reticle span{width:34%;aspect-ratio:1;border:2px solid rgba(255,255,255,.55);border-radius:50%}
+[hidden]{display:none!important}
+
+.meter{display:flex;align-items:flex-end;gap:14px;margin:18px 0 6px;flex-wrap:wrap}
+.reading{font:700 4.5rem/.9 "Bricolage Grotesque",Figtree,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.reading small{font-size:1.1rem;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:4px}
+.desc{color:var(--muted);padding-bottom:8px}
+.gauge{height:14px;border-radius:7px;background:linear-gradient(90deg,var(--shade),var(--sun));position:relative;margin:4px 0 18px;opacity:.9}
+.gauge i{position:absolute;top:-5px;width:4px;height:24px;border-radius:2px;background:var(--ink);transform:translateX(-2px);transition:left .15s linear}
+
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=text]{flex:1 1 100%;min-width:0;font:inherit;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink)}
+button,.btn{font:600 1rem/1 Figtree,system-ui,sans-serif;padding:14px 18px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent}
+.row .btn,.row button{flex:1 1 0}
+.primary{background:var(--sun)!important;border-color:var(--sun)!important;color:#2a1f05!important}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,.btn:focus-within{outline:3px solid var(--shade);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.tools{margin:12px 0 0;gap:14px;color:var(--muted);font-size:.9rem}
+.tools label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.linkish{background:none!important;border:none!important;padding:4px 0;color:var(--muted);font-weight:500;text-decoration:underline;text-underline-offset:3px;flex:0 0 auto!important}
+.note{font-size:.88rem;color:var(--muted);background:var(--panel);border-left:4px solid var(--sun);padding:10px 12px;border-radius:0 10px 10px 0;margin:14px 0 0}
+.progress{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:10px;visibility:hidden}
+.progress b{display:block;height:100%;width:0;background:var(--sun)}
+
+h2{font:700 1.3rem/1.2 "Bricolage Grotesque",Figtree,system-ui,sans-serif;margin:34px 0 12px}
+ol{list-style:none;margin:0;padding:0}
+li{background:var(--panel);border-radius:14px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;align-items:center}
+li.top{box-shadow:inset 0 0 0 2px var(--sun)}
+li .name{font-weight:600;overflow-wrap:anywhere}
+li .val{font:700 1.3rem/1 "Bricolage Grotesque",Figtree,system-ui,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+li .val small{font:500 .8rem Figtree,system-ui,sans-serif;color:var(--muted);margin-left:3px}
+li .del{padding:6px 8px;border:none;background:none;color:var(--muted);font-size:1.1rem;flex:none}
+li .bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+li .bar b{display:block;height:100%;background:var(--sun)}
+li .meta{grid-column:1/-1;font-size:.8rem;color:var(--muted)}
+.empty{color:var(--muted);background:var(--panel);border-radius:14px;padding:16px;text-align:center}
+.verdict{margin:0 0 12px;font-weight:500}
+.foot{margin-top:14px;display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.gauge i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Où est-ce le plus lumineux ?</h1>
+  <p class="lede">À chaque endroit, visez la même chose (un mur clair, une feuille blanche), prenez la mesure, puis comparez.</p>
+
+  <div class="viewer">
+    <video id="video" playsinline muted hidden></video>
+    <img id="shot" alt="Dernière photo mesurée" hidden>
+    <div class="reticle" id="reticle" aria-hidden="true" hidden><span></span></div>
+    <div class="off" id="off">
+      <div>
+        <p id="offMsg">Prenez une photo à chaque endroit : l'app lit les réglages de l'appareil photo pour estimer la lumière en lux. Aucune image n'est enregistrée.</p>
+        <button class="linkish" id="startBtn">Essayer la caméra en direct</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="meter" aria-live="polite">
+    <div class="reading" id="reading">–<small id="unit">lux</small></div>
+    <div class="desc" id="desc">En attente d'une mesure</div>
+  </div>
+  <div class="gauge" aria-hidden="true"><i id="needle" style="left:0%"></i></div>
+
+  <div class="row">
+    <input type="text" id="place" placeholder="Nom de l'endroit (ex. salon, bureau)" maxlength="60" aria-label="Nom de l'endroit">
+    <label class="btn primary" id="photoBtn">Prendre une photo
+      <input class="sr" type="file" id="photoInput" accept="image/*" capture="environment">
+    </label>
+    <button id="measureBtn" hidden>Mesurer en direct</button>
+  </div>
+  <div class="progress" id="progress"><b id="progressBar"></b></div>
+
+  <div class="row tools" id="liveTools" hidden>
+    <label><input type="checkbox" id="lockChk" disabled> Figer l'exposition</label>
+    <button class="linkish" id="flipBtn">Changer de caméra</button>
+  </div>
+  <p class="note" id="note">Tenez le téléphone à la même distance et dans le même angle à chaque endroit. Désactivez le flash.</p>
+
+  <h2>Classement</h2>
+  <p class="verdict" id="verdict" hidden></p>
+  <ol id="list"></ol>
+  <div class="foot">
+    <span id="storeInfo"></span>
+    <button class="linkish" id="clearBtn" hidden>Tout effacer</button>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const video = $('video'), shot = $('shot');
+  const canvas = document.createElement('canvas');
+  const W = 64, H = 48; canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  let stream = null, track = null, facing = 'environment', live = 0, measuring = false, shotUrl = null;
+  let entries = [], db = null;
+
+  // ---------- calcul ----------
+  const lin = new Float32Array(256);
+  for (let i = 0; i < 256; i++) { const c = i / 255; lin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  const lstar = Y => Y > 216 / 24389 ? 116 * Math.cbrt(Y) - 16 : Y * 24389 / 27;
+
+  function meanY(src) {
+    ctx.drawImage(src, 0, 0, W, H);
+    const d = ctx.getImageData(0, 0, W, H).data;
+    let s = 0;
+    for (let i = 0; i < d.length; i += 4) s += 0.2126 * lin[d[i]] + 0.7152 * lin[d[i + 1]] + 0.0722 * lin[d[i + 2]];
+    return s / (W * H);
+  }
+
+  const scoreLabel = v => v < 15 ? 'Très sombre' : v < 35 ? 'Sombre' : v < 55 ? 'Tamisé' : v < 75 ? 'Lumineux' : 'Très lumineux';
+  const luxLabel = l => l < 50 ? 'Très sombre' : l < 150 ? 'Sombre' : l < 300 ? 'Tamisé' : l < 1000 ? 'Lumineux' : l < 10000 ? 'Très lumineux' : 'Plein jour';
+  const fmtLux = l => l >= 10000 ? Math.round(l / 1000) + ' k' : l >= 100 ? String(Math.round(l / 10) * 10) : String(Math.round(l));
+  // position sur la jauge : échelle logarithmique 1 → 100 000 lux
+  const luxPos = l => Math.min(100, Math.max(0, Math.log10(Math.max(l, 1)) / 5 * 100));
+
+  function show(value, unit, text, pos) {
+    $('reading').firstChild.nodeValue = value;
+    $('unit').textContent = unit;
+    $('desc').textContent = text;
+    $('needle').style.left = pos + '%';
+  }
+
+  // ---------- EXIF (JPEG) ----------
+  function readExif(buf) {
+    const v = new DataView(buf);
+    if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return null;
+    let o = 2;
+    while (o + 10 < v.byteLength) {
+      const m = v.getUint16(o);
+      if ((m & 0xFF00) !== 0xFF00) return null;
+      if (m === 0xFFDA || m === 0xFFD9) return null;
+      const len = v.getUint16(o + 2);
+      if (m === 0xFFE1 && v.getUint32(o + 4) === 0x45786966) return parseTiff(v, o + 10);
+      o += 2 + len;
+    }
+    return null;
+  }
+  function parseTiff(v, t) {
+    const le = v.getUint16(t) === 0x4949;
+    const u16 = p => v.getUint16(p, le), u32 = p => v.getUint32(p, le);
+    const ifd = p => {
+      const out = {}, n = u16(p);
+      for (let i = 0; i < n; i++) {
+        const e = p + 2 + i * 12;
+        out[u16(e)] = { type: u16(e + 2), at: e + 8 };
+      }
+      return out;
+    };
+    const rat = e => { const off = t + u32(e.at); const d = u32(off + 4); return d ? u32(off) / d : null; };
+    const num = e => e.type === 3 ? u16(e.at) : e.type === 4 ? u32(e.at) : e.type === 5 ? rat(e) : null;
+    const ifd0 = ifd(t + u32(t + 4));
+    if (!ifd0[0x8769]) return null;
+    const ex = ifd(t + u32(ifd0[0x8769].at));
+    const out = {
+      t: ex[0x829A] ? num(ex[0x829A]) : null,
+      N: ex[0x829D] ? num(ex[0x829D]) : null,
+      iso: ex[0x8827] ? num(ex[0x8827]) : null,
+      flash: ex[0x9209] ? (num(ex[0x9209]) & 1) === 1 : false
+    };
+    return out.t && out.N && out.iso ? out : null;
+  }
+
+  // ---------- mesure par photo ----------
+  async function decode(file) {
+    if (window.createImageBitmap) { try { return await createImageBitmap(file); } catch {} }
+    return new Promise((res, rej) => {
+      const img = new Image(); img.onload = () => res(img); img.onerror = rej;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function onPhoto(file) {
+    if (!file) return;
+    stop();
+    show('…', '', 'Analyse de la photo', 0);
+    let buf, img;
+    try { buf = await file.arrayBuffer(); img = await decode(file); }
+    catch { show('–', 'lux', "Impossible de lire cette photo. Réessayez avec l'appareil photo.", 0); return; }
+
+    if (shotUrl) URL.revokeObjectURL(shotUrl);
+    shotUrl = URL.createObjectURL(file);
+    shot.src = shotUrl; shot.hidden = false; video.hidden = true; $('off').hidden = true; $('reticle').hidden = true;
+
+    const Y = Math.max(meanY(img), 0.001);
+    const score = lstar(Y);
+    const exif = readExif(buf);
+    const name = $('place').value.trim() || ('Endroit ' + (entries.length + 1));
+    const entry = { id: newId(), name, value: Math.round(score * 10) / 10, at: new Date().toISOString(), source: 'photo' };
+
+    if (exif) {
+      // EV100 de l'exposition, corrigé par la luminosité réelle de l'image par rapport au gris moyen (18 %)
+      const ev = Math.log2(exif.N * exif.N / exif.t) - Math.log2(exif.iso / 100) + Math.log2(Y / 0.18);
+      const lux = 2.5 * Math.pow(2, ev);
+      entry.lux = Math.round(lux);
+      entry.flash = exif.flash;
+      show(fmtLux(lux), 'lux', luxLabel(lux) + (exif.flash ? ', flash détecté : mesure faussée' : ', estimation'), luxPos(lux));
+    } else {
+      show(Math.round(score), '/100', scoreLabel(score) + ", réglages photo introuvables", score);
+    }
+    await save(entry);
+    $('place').value = '';
+  }
+
+  // ---------- caméra en direct (si le navigateur l'autorise) ----------
+  function loop() {
+    if (!stream) return;
+    if (video.readyState >= 2) {
+      const v = lstar(meanY(video));
+      live = live ? live * 0.8 + v * 0.2 : v;
+      show(Math.round(live), '/100', scoreLabel(live) + ', en direct', live);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  async function start() {
+    const fail = msg => {
+      $('offMsg').textContent = msg; $('off').hidden = false;
+      $('startBtn').textContent = 'Réessayer la caméra en direct';
+    };
+    if (!navigator.mediaDevices?.getUserMedia) return fail("La caméra en direct n'est pas disponible dans cette page, c'est normal sur iPhone. Utilisez « Prendre une photo » : la mesure est même plus précise.");
+    stop();
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing } }, audio: false });
+    } catch (e) {
+      stream = null;
+      return fail(e.name === 'NotFoundError' ? "Aucune caméra trouvée sur cet appareil." :
+        "Le navigateur bloque la caméra en direct dans cette page, même avec l'autorisation. Utilisez « Prendre une photo » : la mesure est même plus précise.");
+    }
+    track = stream.getVideoTracks()[0];
+    video.srcObject = stream; video.hidden = false; shot.hidden = true;
+    await video.play().catch(() => {});
+    $('off').hidden = true; $('reticle').hidden = false;
+    $('measureBtn').hidden = false; $('liveTools').hidden = false;
+    setupLock(); live = 0;
+    requestAnimationFrame(loop);
+  }
+  function stop() {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null; track = null;
+    $('measureBtn').hidden = true; $('liveTools').hidden = true; $('reticle').hidden = true;
+  }
+  function lockSupported() {
+    const caps = track?.getCapabilities?.() || {};
+    return Array.isArray(caps.exposureMode) && caps.exposureMode.includes('manual');
+  }
+  function setupLock() {
+    const chk = $('lockChk');
+    chk.disabled = !lockSupported();
+    if (chk.disabled) chk.checked = false; else applyLock();
+  }
+  async function applyLock() {
+    if (!lockSupported()) return;
+    const on = $('lockChk').checked;
+    try { await track.applyConstraints({ advanced: [{ exposureMode: on ? 'manual' : 'continuous' }] }); } catch {}
+  }
+  async function measureLive() {
+    if (!stream || measuring) return;
+    measuring = true;
+    const btn = $('measureBtn'); btn.disabled = true;
+    const prog = $('progress'), bar = $('progressBar'); prog.style.visibility = 'visible';
+    const vals = [], t0 = performance.now(), dur = 1500;
+    await new Promise(res => (function step() {
+      const t = performance.now() - t0;
+      if (video.readyState >= 2) vals.push(lstar(meanY(video)));
+      bar.style.width = Math.min(100, t / dur * 100) + '%';
+      t < dur ? requestAnimationFrame(step) : res();
+    })());
+    vals.sort((a, b) => a - b);
+    const tr = vals.slice(Math.floor(vals.length * .1), Math.ceil(vals.length * .9));
+    const avg = tr.reduce((a, b) => a + b, 0) / (tr.length || 1);
+    const name = $('place').value.trim() || ('Endroit ' + (entries.length + 1));
+    await save({ id: newId(), name, value: Math.round(avg * 10) / 10, at: new Date().toISOString(), source: 'live', locked: $('lockChk').checked });
+    $('place').value = '';
+    prog.style.visibility = 'hidden'; bar.style.width = '0';
+    btn.disabled = false; measuring = false;
+  }
+
+  // ---------- stockage ----------
+  const newId = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const LS = 'luxmetre.entries';
+  const lsLoad = () => { try { return JSON.parse(localStorage.getItem(LS) || '[]'); } catch { return []; } };
+  const lsSave = () => { try { localStorage.setItem(LS, JSON.stringify(entries)); } catch {} };
+  async function save(e) {
+    if (db) { try { await db.collection('mesures').doc(e.id).set(e); return; } catch {} }
+    entries.push(e); lsSave(); render();
+  }
+  async function remove(id) {
+    if (db) { try { await db.collection('mesures').doc(id).delete(); return; } catch {} }
+    entries = entries.filter(e => e.id !== id); lsSave(); render();
+  }
+  async function clearAll() {
+    if (!confirm('Effacer toutes les mesures ?')) return;
+    if (db) { for (const e of entries.slice()) { try { await db.collection('mesures').doc(e.id).delete(); } catch {} } return; }
+    entries = []; lsSave(); render();
+  }
+
+  // ---------- classement ----------
+  function render() {
+    const list = $('list'); list.textContent = '';
+    const allLux = entries.length > 0 && entries.every(e => typeof e.lux === 'number');
+    const key = e => allLux ? e.lux : e.value;
+    const sorted = entries.slice().sort((a, b) => key(b) - key(a));
+    $('clearBtn').hidden = !sorted.length;
+    const vd = $('verdict');
+    if (!sorted.length) {
+      const d = document.createElement('div'); d.className = 'empty';
+      d.textContent = "Aucune mesure pour l'instant. Nommez l'endroit, puis prenez une photo.";
+      list.appendChild(d); vd.hidden = true; return;
+    }
+    const max = Math.max(...sorted.map(key), 1);
+    sorted.forEach((e, i) => {
+      const li = document.createElement('li'); if (i === 0 && sorted.length > 1) li.className = 'top';
+      const n = document.createElement('span'); n.className = 'name'; n.textContent = (i === 0 && sorted.length > 1 ? '☀ ' : '') + e.name;
+      const v = document.createElement('span'); v.className = 'val';
+      const u = document.createElement('small');
+      if (allLux) { v.textContent = fmtLux(e.lux); u.textContent = 'lux'; } else { v.textContent = Math.round(e.value); u.textContent = '/100'; }
+      v.appendChild(u);
+      const del = document.createElement('button'); del.className = 'del'; del.textContent = '✕'; del.setAttribute('aria-label', 'Supprimer ' + e.name); del.onclick = () => remove(e.id);
+      const bar = document.createElement('div'); bar.className = 'bar'; const b = document.createElement('b');
+      b.style.width = (allLux ? luxPos(e.lux) / luxPos(max) : e.value / max) * 100 + '%'; bar.appendChild(b);
+      const meta = document.createElement('div'); meta.className = 'meta';
+      const dt = new Date(e.at);
+      const bits = [allLux ? luxLabel(e.lux) : scoreLabel(e.value),
+        dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ' + dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })];
+      if (!allLux && typeof e.lux === 'number') bits.push('≈ ' + fmtLux(e.lux) + ' lux');
+      if (e.flash) bits.push('flash utilisé');
+      meta.textContent = bits.join(', ');
+      li.append(n, v, del, bar, meta); list.appendChild(li);
+    });
+    if (sorted.length > 1) {
+      const a = sorted[0], z = sorted[sorted.length - 1];
+      if (allLux) {
+        const r = a.lux / Math.max(z.lux, 1);
+        vd.textContent = r < 1.25 ? 'Les endroits reçoivent quasiment autant de lumière.'
+          : `${a.name} est le plus lumineux, environ ${r < 10 ? r.toFixed(1).replace('.', ',') : Math.round(r)} fois plus que ${z.name}.`;
+      } else {
+        const diff = Math.round(a.value - z.value);
+        vd.textContent = diff < 3 ? 'Les endroits sont quasiment aussi lumineux les uns que les autres.'
+          : `${a.name} est le plus lumineux, ${diff} points devant ${z.name}. Mesurez tout en photo pour un classement en lux.`;
+      }
+      vd.hidden = false;
+    } else vd.hidden = true;
+  }
+
+  // ---------- init ----------
+  entries = lsLoad(); render();
+  $('storeInfo').textContent = 'Mesures gardées dans ce navigateur';
+  if (window.claude?.use) {
+    window.claude.use('db').then(d => {
+      if (!d) return;
+      db = d;
+      db.collection('mesures').onSnapshot(snap => {
+        entries = snap.docs.map(s => s.data()).filter(Boolean);
+        $('storeInfo').textContent = 'Mesures enregistrées avec la page';
+        render();
+      }, () => { db = null; });
+    }).catch(() => {});
+  }
+
+  $('photoInput').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; onPhoto(f); });
+  $('startBtn').onclick = start;
+  $('measureBtn').onclick = measureLive;
+  $('lockChk').onchange = applyLock;
+  $('flipBtn').onclick = () => { facing = facing === 'environment' ? 'user' : 'environment'; start(); };
+  $('clearBtn').onclick = clearAll;
+  document.addEventListener('visibilitychange', () => { if (document.hidden && stream) { stop(); video.hidden = true; $('off').hidden = false; $('offMsg').textContent = 'Caméra en pause.'; } });
+})();
+</script>
+</body>
+</html>
